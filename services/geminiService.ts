@@ -1,11 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { LinkAnalysisResult } from "../types";
 
+// Initialize the AI instance directly with process.env.API_KEY as per guidelines.
+// This relies on the define plugin in vite.config.ts to replace the variable.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeLinkContent = async (url: string): Promise<LinkAnalysisResult> => {
   try {
-    const modelId = "gemini-2.5-flash"; // Fast model for quick UI response
+    const modelId = "gemini-2.5-flash"; 
 
     const prompt = `
       Analyze this URL: "${url}".
@@ -39,8 +41,8 @@ export const analyzeLinkContent = async (url: string): Promise<LinkAnalysisResul
     return result;
 
   } catch (error) {
-    console.error("Gemini analysis failed:", error);
-    // Fallback logic if API fails or quota exceeded
-    return { title: "Liên kết mới" };
+    console.error("Gemini analysis failed or quota exceeded:", error);
+    // Graceful fallback
+    return { title: "Link mới" };
   }
 };
