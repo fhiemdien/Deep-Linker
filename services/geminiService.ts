@@ -1,6 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { LinkAnalysisResult } from "../types";
 
+// FIX: Declare process explicitly to satisfy TypeScript compiler
+// This prevents "Cannot find name 'process'" error during Vercel build
+declare const process: {
+  env: {
+    API_KEY?: string;
+    [key: string]: string | undefined;
+  }
+};
+
 // Initialize the AI instance directly with process.env.API_KEY as per guidelines.
 // This relies on the define plugin in vite.config.ts to replace the variable.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
