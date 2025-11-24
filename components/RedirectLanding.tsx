@@ -1,0 +1,143 @@
+import React, { useState, useEffect } from 'react';
+import { HistoryItem } from '../types';
+import DeepLinkModal from './DeepLinkModal';
+import { getAndroidIntent } from '../services/linkUtils';
+import { Music, Play, ExternalLink, ShieldAlert } from 'lucide-react';
+
+interface Props {
+  linkData: string; // The raw shared link (e.g., spotify:track:...)
+}
+
+const RedirectLanding: React.FC<Props> = ({ linkData }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [metadata, setMetadata] = useState<{ title: string; subtitle: string }>({
+    title: 'Đang tải...',
+    subtitle: 'Vui lòng chờ giây lát'
+  });
+
+  // Parse the link data to display some fake metadata (In a real app, you'd fetch OGP tags)
+  useEffect(() => {
+    let title = "Nội dung được chia sẻ";
+    let subtitle = "Nhấn để mở trong ứng dụng";
+
+    if (linkData.includes('spotify')) {
+      title = "Spotify Music";
+      if (linkData.includes('track')) subtitle = "Bài hát";
+      if (linkData.includes('playlist')) subtitle = "Playlist";
+      if (linkData.includes('album')) subtitle = "Album";
+    } else if (linkData.includes('youtube')) {
+      title = "YouTube Video";
+      subtitle = "Xem ngay";
+    }
+
+    setMetadata({ title, subtitle });
+  }, [linkData]);
+
+  const handleSmartRedirect = () => {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isAndroid = /android/i.test(userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
+
+    let targetUrl = linkData;
+    let fallbackUrl = 'https://open.spotify.com'; // Default fallback
+
+    // Reconstruct fallback URL from raw data if possible
+    if (linkData.startsWith('spotify:')) {
+       const parts = linkData.split(':');
+       if (parts.length === 3) {
+         fallbackUrl = `https://open.spotify.com/${parts[1]}/${parts[2]}`;
+       }
+    }
+
+    if (isAndroid) {
+      // Android Intent Logic
+      if (linkData.includes('spotify')) {
+         // Generate clean Intent
+         targetUrl = getAndroidIntent(linkData, 'com.spotify.music', fallbackUrl);
+      }
+      window.location.href = targetUrl;
+    } else if (isIOS) {
+      // iOS Logic: Try scheme, fallback to web
+      const start = Date.now();
+      
+      // Use anchor click simulation
+      const a = document.createElement('a');
+      a.href = linkData; // e.g., spotify:track:123
+      a.click();
+
+      // Fallback timeout
+      setTimeout(() => {
+        if (Date.now() - start < 2500 && !document.hidden) {
+          window.location.href = fallbackUrl;
+        }
+      }, 2000);
+    } else {
+      // Desktop / Other
+      window.location.href = fallbackUrl;
+    }
+
+    // Close modal after a delay to allow navigation to start
+    setTimeout(() => setIsModalOpen(false), 1000);
+  };
+
+  return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 bg-gradient-to-b from-gray-900 to-black z-0"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#1DB954] opacity-10 blur-[100px] rounded-full"></div>
+
+      <div className="z-10 w-full max-w-sm flex flex-col items-center animate-fade-in-up">
+        {/* Album Art Placeholder */}
+        <div className="w-64 h-64 bg-gray-800 rounded-lg shadow-2xl mb-8 flex items-center justify-center border border-gray-700 relative group">
+           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-lg"></div>
+           <Music className="w-20 h-20 text-gray-500 group-hover:text-[#1DB954] transition-colors duration-500" />
+           <div className="absolute bottom-4 left-4">
+             <span className="text-xs font-bold bg-[#1DB954] text-black px-2 py-1 rounded uppercase tracking-wider">
+               App Only
+             </span>
+           </div>
+        </div>
+
+        {/* Text Content */}
+        <h1 className="text-2xl font-bold text-white mb-2 text-center">{metadata.title}</h1>
+        <p className="text-gray-400 mb-8 text-center">{metadata.subtitle}</p>
+
+        {/* Action Button */}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full bg-[#1DB954] hover:bg-[#1ed760] active:scale-95 transition-all text-black font-bold text-lg py-4 px-8 rounded-full flex items-center justify-between shadow-lg shadow-green-900/30 group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-black/20 p-1.5 rounded-full">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" alt="Spotify" className="w-6 h-6" />
+            </div>
+            <span>Play on Spotify</span>
+          </div>
+          <ExternalLink className="w-5 h-5 opacity-60 group-hover:translate-x-1 transition-transform" />
+        </button>
+
+        <p className="mt-6 text-xs text-gray-600 max-w-[250px] text-center">
+          By using this site you agree to our Terms of Use and Privacy Policy.
+        </p>
+      </div>
+
+      <DeepLinkModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleSmartRedirect}
+      />
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.6s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default RedirectLanding;
