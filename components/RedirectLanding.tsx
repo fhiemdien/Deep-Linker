@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { HistoryItem } from '../types';
-import DeepLinkModal from './DeepLinkModal';
 import { getAndroidIntent } from '../services/linkUtils';
-import { Music, Play, ExternalLink, ShieldAlert } from 'lucide-react';
+import { Music, Play, ExternalLink, ShieldAlert, Loader2 } from 'lucide-react';
 
 interface Props {
   linkData: string; // The raw shared link (e.g., spotify:track:...)
 }
 
 const RedirectLanding: React.FC<Props> = ({ linkData }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [metadata, setMetadata] = useState<{ title: string; subtitle: string }>({
-    title: 'Đang tải...',
+    title: 'Đang mở ứng dụng...',
     subtitle: 'Vui lòng chờ giây lát'
   });
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Parse the link data to display some fake metadata (In a real app, you'd fetch OGP tags)
+  // Parse the link data to display metadata
   useEffect(() => {
-    let title = "Nội dung được chia sẻ";
-    let subtitle = "Nhấn để mở trong ứng dụng";
+    let title = "Đang mở ứng dụng...";
+    let subtitle = "Đang chuyển hướng...";
 
     if (linkData.includes('spotify')) {
       title = "Spotify Music";
@@ -34,6 +32,7 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
   }, [linkData]);
 
   const handleSmartRedirect = () => {
+    setIsRedirecting(true);
     const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
@@ -75,10 +74,17 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
       // Desktop / Other
       window.location.href = fallbackUrl;
     }
-
-    // Close modal after a delay to allow navigation to start
-    setTimeout(() => setIsModalOpen(false), 1000);
   };
+
+  // Auto-redirect effect
+  useEffect(() => {
+    // Wait a brief moment to let the UI render and look professional, then trigger
+    const timer = setTimeout(() => {
+      handleSmartRedirect();
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [linkData]);
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -100,11 +106,14 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
 
         {/* Text Content */}
         <h1 className="text-2xl font-bold text-white mb-2 text-center">{metadata.title}</h1>
-        <p className="text-gray-400 mb-8 text-center">{metadata.subtitle}</p>
+        <p className="text-gray-400 mb-8 text-center flex items-center gap-2 justify-center">
+           {isRedirecting && <Loader2 className="w-3 h-3 animate-spin" />}
+           {metadata.subtitle}
+        </p>
 
         {/* Action Button */}
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleSmartRedirect}
           className="w-full bg-[#1DB954] hover:bg-[#1ed760] active:scale-95 transition-all text-black font-bold text-lg py-4 px-8 rounded-full flex items-center justify-between shadow-lg shadow-green-900/30 group"
         >
           <div className="flex items-center gap-3">
@@ -117,15 +126,9 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
         </button>
 
         <p className="mt-6 text-xs text-gray-600 max-w-[250px] text-center">
-          By using this site you agree to our Terms of Use and Privacy Policy.
+          Nếu ứng dụng không tự động mở, vui lòng nhấn nút ở trên.
         </p>
       </div>
-
-      <DeepLinkModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleSmartRedirect}
-      />
 
       <style>{`
         @keyframes fadeInUp {
