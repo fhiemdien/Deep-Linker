@@ -41,6 +41,9 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
 
+    // Thời gian chờ chốt cứng 1.5 giây theo yêu cầu
+    const TIMEOUT_DURATION = 1500; 
+
     let fallbackUrl = 'https://open.spotify.com'; // Default fallback
 
     // --- Logic xác định Fallback URL (Trang web dự phòng) ---
@@ -55,50 +58,52 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
        fallbackUrl = linkData.replace('vnd.youtube://', '');
     }
 
+    // Hàm chuyển hướng về Web an toàn (dùng replace để không bị Back lại trang lỗi)
+    const forceWebFallback = () => {
+      // Chỉ chuyển hướng nếu trang web vẫn đang hiển thị (nghĩa là App chưa mở lên che mất)
+      if (!document.hidden) {
+        console.log("App launch failed or timed out. Falling back to Web.");
+        window.location.replace(fallbackUrl);
+      }
+    };
+
     if (isAndroid) {
       // --- ANDROID ---
-      // Android Intent: Tự động xử lý fallback
       let targetUrl = linkData;
       if (linkData.includes('spotify')) {
+         // Android Intent đã có sẵn browser_fallback_url bên trong
          targetUrl = getAndroidIntent(linkData, 'com.spotify.music', fallbackUrl);
       } else if (linkData.includes('youtube')) {
          if (linkData.startsWith('vnd.youtube://')) {
-             targetUrl = fallbackUrl; // Youtube Android xử lý link https tốt hơn scheme lạ
+             targetUrl = fallbackUrl;
          }
       }
       window.location.href = targetUrl;
 
+      // Safety Net cho Android: Dù Intent có fallback, vẫn đặt timer đề phòng trình duyệt chặn
+      setTimeout(forceWebFallback, TIMEOUT_DURATION);
+
     } else if (isIOS) {
       // --- iOS (iPhone/iPad) ---
-      // Logic: Thử mở App -> Đợi 2s -> Nếu vẫn ở web thì Redirect sang Web Link
       
       // 1. Thử mở App Scheme
       window.location.href = linkData;
 
-      // 2. Cài đặt thời gian chờ (Timeout)
-      setTimeout(() => {
-        // Kiểm tra xem trang web có bị ẩn đi không (nghĩa là App đã mở thành công)
-        // !document.hidden nghĩa là người dùng vẫn đang nhìn thấy trang web -> App chưa mở
-        if (!document.hidden) {
-           console.log("iOS: App not launched, fallback to Web URL");
-           // BẮT BUỘC chuyển hướng (replace) về Web Player để tránh kẹt ở trang lỗi
-           window.location.replace(fallbackUrl);
-        }
-      }, 2000); // 2 giây
+      // 2. Đếm ngược 1.5 giây -> Nếu chưa nhảy App thì về Web
+      setTimeout(forceWebFallback, TIMEOUT_DURATION);
 
     } else {
       // --- PC / Desktop ---
-      // Mở thẳng trang web luôn cho nhanh
       window.location.replace(fallbackUrl);
     }
   };
 
   // Auto-redirect effect
   useEffect(() => {
-    // Chờ 0.8s để hiện giao diện đẹp, sau đó bắn lệnh mở App
+    // Chờ 0.5s để hiện giao diện, sau đó bắn lệnh mở App ngay
     const timer = setTimeout(() => {
       handleSmartRedirect();
-    }, 800);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [linkData]);
