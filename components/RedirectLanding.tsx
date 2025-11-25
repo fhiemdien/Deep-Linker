@@ -51,27 +51,31 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
        // spotify:track:123 -> https://open.spotify.com/track/123
        const parts = linkData.split(':');
        if (parts.length === 3) {
-         fallbackUrl = `https://open.spotify.com/${parts[1]}/${parts[2]}`;
+         // Thêm ?go=1 để tăng khả năng kích hoạt Universal Link của Spotify trên iOS/Android
+         fallbackUrl = `https://open.spotify.com/${parts[1]}/${parts[2]}?go=1`;
        }
     } else if (linkData.startsWith('vnd.youtube://')) {
        // vnd.youtube://https://youtube.com... -> https://youtube.com...
        fallbackUrl = linkData.replace('vnd.youtube://', '');
     }
 
-    // Hàm chuyển hướng về Web an toàn
-    // FIX: Thêm logic thoát Iframe (Smart Link Breakout)
+    // Hàm chuyển hướng về Web an toàn (MẠNH HƠN)
     const forceWebFallback = () => {
-      console.log("Force redirecting to Web Fallback...");
+      console.log("Force redirecting to Web Fallback:", fallbackUrl);
+      
+      // Kỹ thuật "Break out": Cố gắng thoát khỏi Iframe của Smart Link
+      // Sử dụng .replace() thay vì .href để ép trình duyệt thay thế trang hiện tại
+      // Điều này hiệu quả hơn trong việc thoát khỏi các webview bị kẹt
       try {
-        // Cố gắng chuyển hướng cửa sổ cha (nếu đang nằm trong Smart Link iframe)
         if (window.top && window.top !== window) {
-           window.top.location.href = fallbackUrl;
+           // Nếu đang trong Iframe, ép cửa sổ cha chuyển hướng
+           window.top.location.replace(fallbackUrl);
         } else {
-           window.location.href = fallbackUrl;
+           window.location.replace(fallbackUrl);
         }
       } catch (e) {
-        // Nếu bị chặn Cross-origin, dùng cách thông thường
-        window.location.href = fallbackUrl;
+        // Nếu thất bại (do chặn Cross-origin), chuyển hướng cửa sổ hiện tại
+        window.location.replace(fallbackUrl);
       }
     };
 
@@ -90,7 +94,7 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
       // Thử chuyển hướng
       window.location.href = targetUrl;
 
-      // Safety Net cho Android: Dù Intent có fallback, vẫn đặt timer đề phòng trình duyệt chặn
+      // Safety Net cho Android
       setTimeout(forceWebFallback, TIMEOUT_DURATION);
 
     } else if (isIOS) {
@@ -99,7 +103,7 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
       // 1. Thử mở App Scheme
       window.location.href = linkData;
 
-      // 2. Đếm ngược 1.5 giây -> Nếu chưa nhảy App thì về Web
+      // 2. Đếm ngược 1.5 giây -> Nếu chưa nhảy App thì BẮT BUỘC về Web
       setTimeout(forceWebFallback, TIMEOUT_DURATION);
 
     } else {
