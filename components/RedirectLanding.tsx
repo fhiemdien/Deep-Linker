@@ -57,8 +57,7 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
 
     if (isAndroid) {
       // --- ANDROID ---
-      // Android Intent rất mạnh, nó tự xử lý fallback bằng S.browser_fallback_url
-      // Không cần set timeout JS phức tạp ở đây.
+      // Android Intent: Tự động xử lý fallback
       let targetUrl = linkData;
       if (linkData.includes('spotify')) {
          targetUrl = getAndroidIntent(linkData, 'com.spotify.music', fallbackUrl);
@@ -73,23 +72,19 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
       // --- iOS (iPhone/iPad) ---
       // Logic: Thử mở App -> Đợi 2s -> Nếu vẫn ở web thì Redirect sang Web Link
       
-      const start = Date.now();
-      
       // 1. Thử mở App Scheme
-      // Dùng location.href thay vì iframe hay a.click để đảm bảo tương thích tốt nhất hiện nay
       window.location.href = linkData;
 
       // 2. Cài đặt thời gian chờ (Timeout)
       setTimeout(() => {
-        const now = Date.now();
         // Kiểm tra xem trang web có bị ẩn đi không (nghĩa là App đã mở thành công)
         // !document.hidden nghĩa là người dùng vẫn đang nhìn thấy trang web -> App chưa mở
         if (!document.hidden) {
            console.log("iOS: App not launched, fallback to Web URL");
-           // Dùng replace để thay thế trang hiện tại, tránh người dùng Back lại trang lỗi
+           // BẮT BUỘC chuyển hướng (replace) về Web Player để tránh kẹt ở trang lỗi
            window.location.replace(fallbackUrl);
         }
-      }, 2000); // 2000ms = 2 giây (đủ để iOS hiện thông báo lỗi nếu có và JS kịp chạy tiếp)
+      }, 2000); // 2 giây
 
     } else {
       // --- PC / Desktop ---

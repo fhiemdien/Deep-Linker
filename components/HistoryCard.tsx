@@ -12,9 +12,9 @@ const HistoryCard: React.FC<Props> = ({ item, onOpen }) => {
   const [copied, setCopied] = React.useState<'link' | null>(null);
 
   const handleCopyShareLink = async () => {
-    // FIX: Thay vì lấy window.location.origin (có thể là link dài loằng ngoằng của Vercel deploy),
-    // ta ép cứng dùng domain chính thức (ngắn đẹp) để link chia sẻ luôn chuyên nghiệp.
-    const domain = 'https://deep-linker-nine.vercel.app';
+    // FIX: Sử dụng window.location.origin để tự động lấy domain hiện tại.
+    // Điều này giúp link luôn đúng kể cả khi bạn đổi Project Vercel hay dùng tên miền riêng.
+    const domain = window.location.origin;
     
     // Tạo link đầy đủ
     const shareUrl = `${domain}/?link=${encodeURIComponent(item.deepLinkUrl)}`;
