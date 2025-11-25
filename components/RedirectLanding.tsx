@@ -54,51 +54,56 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
     } else if (linkData.startsWith('vnd.youtube://')) {
        // vnd.youtube://https://youtube.com... -> https://youtube.com...
        fallbackUrl = linkData.replace('vnd.youtube://', '');
-       // Nếu trên Android/iOS thì targetUrl giữ nguyên scheme vnd.youtube
-       // Fallback là link http
     }
 
+    // Thời gian chờ Fallback (1 giây)
+    const FALLBACK_TIMEOUT = 1000;
+    const startTimestamp = Date.now();
+
     if (isAndroid) {
-      // Android Intent Logic
+      // Android Intent: Tự nó đã có cơ chế S.browser_fallback_url rất xịn.
+      // Nhưng ta vẫn thêm đoạn JS này để backup cho các trình duyệt lạ.
       if (linkData.includes('spotify')) {
          targetUrl = getAndroidIntent(linkData, 'com.spotify.music', fallbackUrl);
       } else if (linkData.includes('youtube')) {
-         // Với Youtube trên Android, thường chỉ cần link http là nó tự gợi ý mở app, 
-         // hoặc dùng intent với package youtube
-         targetUrl = `intent://ViewIntent#Intent;scheme=http;package=com.google.android.youtube;S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
-         // Tuy nhiên đơn giản nhất là dùng lại link web gốc nếu scheme vnd.youtube fail, 
-         // nhưng ở đây ta cứ thử redirect thẳng.
-         // Fallback an toàn nhất cho youtube android là để trình duyệt tự xử lý link https
          if (linkData.startsWith('vnd.youtube://')) {
-             // Remove scheme riêng để trả về link https gốc, Android hiện đại tự bắt link này
-             targetUrl = fallbackUrl;
+             targetUrl = fallbackUrl; // Youtube Android xử lý link https tốt hơn scheme lạ
          }
       }
       window.location.href = targetUrl;
     } else if (isIOS) {
-      // iOS Logic: Try scheme, fallback to web
-      const start = Date.now();
-      
-      // Use anchor click simulation
+      // iOS: Dùng kỹ thuật Anchor Click để tránh bị chặn popup
       const a = document.createElement('a');
       a.href = linkData; // e.g., spotify:track:123
       a.click();
-
-      // Fallback timeout
-      setTimeout(() => {
-        if (Date.now() - start < 2500 && !document.hidden) {
-          window.location.href = fallbackUrl;
-        }
-      }, 2000);
     } else {
-      // Desktop / Other -> Mở web
+      // Desktop / Other -> Mở web luôn
       window.location.href = fallbackUrl;
+      return;
     }
+
+    // --- SAFETY NET (Lưới an toàn) ---
+    // Sau 1 giây, kiểm tra xem người dùng có còn ở đây không.
+    // Nếu App mở lên -> Trình duyệt bị ẩn (document.hidden = true) -> Không làm gì cả.
+    // Nếu App KHÔNG mở (do chưa cài) -> Trình duyệt vẫn hiện (document.hidden = false) -> Chuyển hướng sang web.
+    setTimeout(() => {
+      // Kiểm tra tab có đang active không
+      if (!document.hidden) {
+        // Kiểm tra thêm thời gian trôi qua (phòng trường hợp trình duyệt lag)
+        const timeElapsed = Date.now() - startTimestamp;
+        
+        // Chỉ redirect nếu thời gian trôi qua không quá lâu (nghĩa là luồng không bị treo bởi việc switch app)
+        if (timeElapsed < FALLBACK_TIMEOUT + 500) {
+           console.log("App not detected, falling back to Web URL...");
+           window.location.href = fallbackUrl;
+        }
+      }
+    }, FALLBACK_TIMEOUT);
   };
 
   // Auto-redirect effect
   useEffect(() => {
-    // Wait a brief moment to let the UI render and look professional, then trigger
+    // Chờ 0.8s để hiện giao diện đẹp, sau đó bắn lệnh mở App
     const timer = setTimeout(() => {
       handleSmartRedirect();
     }, 800);
