@@ -58,12 +58,21 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
        fallbackUrl = linkData.replace('vnd.youtube://', '');
     }
 
-    // Hàm chuyển hướng về Web an toàn (dùng replace để không bị Back lại trang lỗi)
+    // Hàm chuyển hướng về Web an toàn
+    // FIX: Thêm logic thoát Iframe (Smart Link Breakout)
     const forceWebFallback = () => {
-      // FIX: Xóa bỏ kiểm tra !document.hidden
-      // Bắt buộc chuyển hướng bất kể trạng thái hiển thị (kể cả khi đang hiện Popup Smart Link)
       console.log("Force redirecting to Web Fallback...");
-      window.location.replace(fallbackUrl);
+      try {
+        // Cố gắng chuyển hướng cửa sổ cha (nếu đang nằm trong Smart Link iframe)
+        if (window.top && window.top !== window) {
+           window.top.location.href = fallbackUrl;
+        } else {
+           window.location.href = fallbackUrl;
+        }
+      } catch (e) {
+        // Nếu bị chặn Cross-origin, dùng cách thông thường
+        window.location.href = fallbackUrl;
+      }
     };
 
     if (isAndroid) {
@@ -77,6 +86,8 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
              targetUrl = fallbackUrl;
          }
       }
+      
+      // Thử chuyển hướng
       window.location.href = targetUrl;
 
       // Safety Net cho Android: Dù Intent có fallback, vẫn đặt timer đề phòng trình duyệt chặn
@@ -93,7 +104,7 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
 
     } else {
       // --- PC / Desktop ---
-      window.location.replace(fallbackUrl);
+      forceWebFallback();
     }
   };
 
