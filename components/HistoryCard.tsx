@@ -1,6 +1,6 @@
 import React from 'react';
 import { HistoryItem } from '../types';
-import { ExternalLink, Copy, Music, Facebook, Youtube, Globe, Smartphone, Share2, Eye } from 'lucide-react';
+import { Music, Facebook, Youtube, Globe, Share2, Eye, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
 import { copyToClipboard } from '../services/linkUtils';
 
 interface Props {
@@ -9,12 +9,23 @@ interface Props {
 }
 
 const HistoryCard: React.FC<Props> = ({ item, onOpen }) => {
-  const [copied, setCopied] = React.useState<'raw' | null>(null);
+  const [copied, setCopied] = React.useState<'link' | null>(null);
 
-  const handleCopyRaw = async () => {
-    await copyToClipboard(item.deepLinkUrl);
-    setCopied('raw');
-    setTimeout(() => setCopied(null), 2000);
+  const handleCopyShareLink = async () => {
+    // Lấy tên miền hiện tại (ví dụ: https://deep-linker-xyz.vercel.app)
+    const domain = window.location.origin;
+    
+    // Tạo link đầy đủ
+    const shareUrl = `${domain}/?link=${encodeURIComponent(item.deepLinkUrl)}`;
+    
+    await copyToClipboard(shareUrl);
+    setCopied('link');
+    
+    // Hiện thông báo để người dùng biết chắc chắn đã copy cái gì
+    // (Bạn có thể bỏ dòng này sau khi test xong)
+    alert(`Đã copy link thành công!\n\n${shareUrl}\n\nGửi link này cho bạn bè để test nhé!`);
+
+    setTimeout(() => setCopied(null), 3000);
   };
 
   const getIcon = () => {
@@ -34,7 +45,7 @@ const HistoryCard: React.FC<Props> = ({ item, onOpen }) => {
   });
 
   return (
-    <div className="bg-[#1e1e1e] p-4 rounded-xl mb-3 border border-gray-800 hover:border-gray-600 transition-colors">
+    <div className="bg-[#1e1e1e] p-4 rounded-xl mb-3 border border-gray-800 hover:border-gray-600 transition-colors group">
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
           {getIcon()}
@@ -46,8 +57,7 @@ const HistoryCard: React.FC<Props> = ({ item, onOpen }) => {
       </div>
 
       <div 
-        onClick={() => onOpen(item)}
-        className="block bg-black/30 p-2 rounded text-xs text-blue-400 hover:text-blue-300 hover:underline font-mono mb-3 cursor-pointer transition-colors w-full overflow-hidden"
+        className="block bg-black/30 p-2 rounded text-xs text-gray-400 font-mono mb-3 w-full overflow-hidden select-all"
       >
         <p className="truncate">
           {item.deepLinkUrl}
@@ -57,22 +67,33 @@ const HistoryCard: React.FC<Props> = ({ item, onOpen }) => {
       <div className="flex gap-2">
         <button
           onClick={() => onOpen(item)}
-          className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-2 px-3 rounded-full flex items-center justify-center gap-2 text-sm transition-transform active:scale-95 shadow-lg shadow-purple-900/30"
-          title="Xem giao diện người dùng sẽ thấy"
+          className="px-4 py-2 bg-[#2a2a2a] hover:bg-[#333] text-gray-300 rounded-full flex items-center justify-center gap-2 text-sm transition-colors"
+          title="Xem thử giao diện người dùng (Test nội bộ)"
         >
           <Eye size={16} />
-          Xem thử (Test)
+          Test
         </button>
         
         <button
-          onClick={handleCopyRaw}
-          className={`px-4 rounded-full flex items-center justify-center gap-2 text-sm transition-colors font-medium ${
-            copied === 'raw' ? 'bg-gray-600 text-white' : 'bg-[#2a2a2a] hover:bg-[#333] text-gray-400 hover:text-white'
-          }`}
-          title="Sao chép URI"
+          onClick={handleCopyShareLink}
+          className={`flex-1 rounded-full flex items-center justify-center gap-2 text-sm transition-all font-bold shadow-lg ${
+            copied === 'link' 
+              ? 'bg-green-600 text-white shadow-green-900/20' 
+              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-purple-900/30'
+          } py-2`}
+          title="Bấm để lấy link gửi cho người khác"
         >
-          <Copy size={16} />
-          {copied === 'raw' ? 'Đã chép' : 'Copy URI'}
+          {copied === 'link' ? (
+            <>
+              <CheckCircle2 size={16} />
+              Đã chép!
+            </>
+          ) : (
+            <>
+              <LinkIcon size={16} />
+              COPY LINK ĐỂ SHARE
+            </>
+          )}
         </button>
       </div>
     </div>
