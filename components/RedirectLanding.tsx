@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAndroidIntent } from '../services/linkUtils';
-import { Music, Play, ExternalLink, ShieldAlert, Loader2, Youtube } from 'lucide-react';
+import { Music, Play, ExternalLink, Loader2, Youtube } from 'lucide-react';
 
 interface Props {
   linkData: string; // The raw shared link (e.g., spotify:track:...)
@@ -41,7 +41,6 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
     const isAndroid = /android/i.test(userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
 
-    let targetUrl = linkData;
     let fallbackUrl = 'https://open.spotify.com'; // Default fallback
 
     // --- Logic xác định Fallback URL (Trang web dự phòng) ---
@@ -56,13 +55,11 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
        fallbackUrl = linkData.replace('vnd.youtube://', '');
     }
 
-    // Thời gian chờ Fallback (1 giây)
-    const FALLBACK_TIMEOUT = 1000;
-    const startTimestamp = Date.now();
-
     if (isAndroid) {
-      // Android Intent: Tự nó đã có cơ chế S.browser_fallback_url rất xịn.
-      // Nhưng ta vẫn thêm đoạn JS này để backup cho các trình duyệt lạ.
+      // --- ANDROID ---
+      // Android Intent rất mạnh, nó tự xử lý fallback bằng S.browser_fallback_url
+      // Không cần set timeout JS phức tạp ở đây.
+      let targetUrl = linkData;
       if (linkData.includes('spotify')) {
          targetUrl = getAndroidIntent(linkData, 'com.spotify.music', fallbackUrl);
       } else if (linkData.includes('youtube')) {
@@ -71,34 +68,34 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
          }
       }
       window.location.href = targetUrl;
-    } else if (isIOS) {
-      // iOS: Dùng kỹ thuật Anchor Click để tránh bị chặn popup
-      const a = document.createElement('a');
-      a.href = linkData; // e.g., spotify:track:123
-      a.click();
-    } else {
-      // Desktop / Other -> Mở web luôn
-      window.location.href = fallbackUrl;
-      return;
-    }
 
-    // --- SAFETY NET (Lưới an toàn) ---
-    // Sau 1 giây, kiểm tra xem người dùng có còn ở đây không.
-    // Nếu App mở lên -> Trình duyệt bị ẩn (document.hidden = true) -> Không làm gì cả.
-    // Nếu App KHÔNG mở (do chưa cài) -> Trình duyệt vẫn hiện (document.hidden = false) -> Chuyển hướng sang web.
-    setTimeout(() => {
-      // Kiểm tra tab có đang active không
-      if (!document.hidden) {
-        // Kiểm tra thêm thời gian trôi qua (phòng trường hợp trình duyệt lag)
-        const timeElapsed = Date.now() - startTimestamp;
-        
-        // Chỉ redirect nếu thời gian trôi qua không quá lâu (nghĩa là luồng không bị treo bởi việc switch app)
-        if (timeElapsed < FALLBACK_TIMEOUT + 500) {
-           console.log("App not detected, falling back to Web URL...");
-           window.location.href = fallbackUrl;
+    } else if (isIOS) {
+      // --- iOS (iPhone/iPad) ---
+      // Logic: Thử mở App -> Đợi 2s -> Nếu vẫn ở web thì Redirect sang Web Link
+      
+      const start = Date.now();
+      
+      // 1. Thử mở App Scheme
+      // Dùng location.href thay vì iframe hay a.click để đảm bảo tương thích tốt nhất hiện nay
+      window.location.href = linkData;
+
+      // 2. Cài đặt thời gian chờ (Timeout)
+      setTimeout(() => {
+        const now = Date.now();
+        // Kiểm tra xem trang web có bị ẩn đi không (nghĩa là App đã mở thành công)
+        // !document.hidden nghĩa là người dùng vẫn đang nhìn thấy trang web -> App chưa mở
+        if (!document.hidden) {
+           console.log("iOS: App not launched, fallback to Web URL");
+           // Dùng replace để thay thế trang hiện tại, tránh người dùng Back lại trang lỗi
+           window.location.replace(fallbackUrl);
         }
-      }
-    }, FALLBACK_TIMEOUT);
+      }, 2000); // 2000ms = 2 giây (đủ để iOS hiện thông báo lỗi nếu có và JS kịp chạy tiếp)
+
+    } else {
+      // --- PC / Desktop ---
+      // Mở thẳng trang web luôn cho nhanh
+      window.location.replace(fallbackUrl);
+    }
   };
 
   // Auto-redirect effect
