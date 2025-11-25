@@ -60,11 +60,10 @@ const RedirectLanding: React.FC<Props> = ({ linkData }) => {
 
     // Hàm chuyển hướng về Web an toàn (dùng replace để không bị Back lại trang lỗi)
     const forceWebFallback = () => {
-      // Chỉ chuyển hướng nếu trang web vẫn đang hiển thị (nghĩa là App chưa mở lên che mất)
-      if (!document.hidden) {
-        console.log("App launch failed or timed out. Falling back to Web.");
-        window.location.replace(fallbackUrl);
-      }
+      // FIX: Xóa bỏ kiểm tra !document.hidden
+      // Bắt buộc chuyển hướng bất kể trạng thái hiển thị (kể cả khi đang hiện Popup Smart Link)
+      console.log("Force redirecting to Web Fallback...");
+      window.location.replace(fallbackUrl);
     };
 
     if (isAndroid) {
