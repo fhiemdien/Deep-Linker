@@ -12,8 +12,9 @@ const HistoryCard: React.FC<Props> = ({ item, onOpen }) => {
   const [copied, setCopied] = React.useState<'link' | null>(null);
 
   const handleCopyShareLink = async () => {
-    // Lấy tên miền hiện tại (ví dụ: https://deep-linker-xyz.vercel.app)
-    const domain = window.location.origin;
+    // FIX: Thay vì lấy window.location.origin (có thể là link dài loằng ngoằng của Vercel deploy),
+    // ta ép cứng dùng domain chính thức (ngắn đẹp) để link chia sẻ luôn chuyên nghiệp.
+    const domain = 'https://deep-linker-nine.vercel.app';
     
     // Tạo link đầy đủ
     const shareUrl = `${domain}/?link=${encodeURIComponent(item.deepLinkUrl)}`;
@@ -21,9 +22,8 @@ const HistoryCard: React.FC<Props> = ({ item, onOpen }) => {
     await copyToClipboard(shareUrl);
     setCopied('link');
     
-    // Hiện thông báo để người dùng biết chắc chắn đã copy cái gì
-    // (Bạn có thể bỏ dòng này sau khi test xong)
-    alert(`Đã copy link thành công!\n\n${shareUrl}\n\nGửi link này cho bạn bè để test nhé!`);
+    // Hiện thông báo để người dùng biết chắc chắn đã copy link chuẩn
+    alert(`Đã copy link chuẩn:\n\n${shareUrl}`);
 
     setTimeout(() => setCopied(null), 3000);
   };
