@@ -4,12 +4,21 @@ import { convertToDeepLink } from './services/linkUtils';
 import { analyzeLinkContent } from './services/geminiService';
 import HistoryCard from './components/HistoryCard';
 import RedirectLanding from './components/RedirectLanding';
-import { Link2, Trash2, Zap, AlertCircle, Eye } from 'lucide-react';
+import { Link2, Trash2, Zap, Eye } from 'lucide-react';
 
 const App: React.FC = () => {
-  // Routing State
-  const [viewMode, setViewMode] = useState<'creator' | 'landing'>('creator');
-  const [sharedLinkData, setSharedLinkData] = useState<string>('');
+  // --- LOGIC KHỞI TẠO (Chạy ngay lập tức để chống nháy) ---
+  // Kiểm tra URL ngay khi component vừa được gọi, không đợi useEffect
+  const searchParams = new URLSearchParams(window.location.search);
+  const linkParam = searchParams.get('link');
+
+  // Routing State: Nếu có link -> Set luôn là 'landing' ngay từ đầu
+  const [viewMode, setViewMode] = useState<'creator' | 'landing'>(
+    linkParam ? 'landing' : 'creator'
+  );
+  const [sharedLinkData, setSharedLinkData] = useState<string>(
+    linkParam ? decodeURIComponent(linkParam) : ''
+  );
 
   // App State
   const [urlInput, setUrlInput] = useState('');
@@ -17,24 +26,16 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // 1. Check for shared link (Consumer Mode)
-    const params = new URLSearchParams(window.location.search);
-    const linkParam = params.get('link');
-
-    if (linkParam) {
-      setSharedLinkData(decodeURIComponent(linkParam));
-      setViewMode('landing');
-      return; // Stop here, don't load history
+    // Chỉ load lịch sử nếu đang ở chế độ Admin (Creator)
+    if (viewMode === 'creator') {
+      const saved = localStorage.getItem('deepLinkHistory');
+      if (saved) {
+        try {
+          setHistory(JSON.parse(saved));
+        } catch (e) { console.error(e); }
+      }
     }
-
-    // 2. Load history (Creator Mode)
-    const saved = localStorage.getItem('deepLinkHistory');
-    if (saved) {
-      try {
-        setHistory(JSON.parse(saved));
-      } catch (e) { console.error(e); }
-    }
-  }, []);
+  }, [viewMode]);
 
   useEffect(() => {
     if (viewMode === 'creator') {
@@ -92,6 +93,8 @@ const App: React.FC = () => {
   const handleBackToAdmin = () => {
     setViewMode('creator');
     setSharedLinkData('');
+    // Xóa query param trên URL để tránh F5 lại bị nhảy vào landing
+    window.history.replaceState({}, '', window.location.pathname);
   };
 
   // --- RENDER ---
@@ -99,11 +102,14 @@ const App: React.FC = () => {
   if (viewMode === 'landing') {
     return (
       <>
+        {/* Nút quay lại chỉ hiện nếu người dùng chuyển từ Admin sang test, 
+            hoặc bạn muốn để backdoor cho chính mình. 
+            Nếu là user thật vào từ link chia sẻ, họ thường không để ý nút này. */}
         <button 
           onClick={handleBackToAdmin}
-          className="fixed top-4 left-4 z-50 bg-black/50 text-white px-3 py-1 rounded-full text-xs hover:bg-black/80 backdrop-blur-md border border-white/20"
+          className="fixed top-4 left-4 z-50 bg-black/50 text-white px-3 py-1 rounded-full text-xs hover:bg-black/80 backdrop-blur-md border border-white/20 opacity-30 hover:opacity-100 transition-opacity"
         >
-          ⬅ Quay lại Admin
+          Admin
         </button>
         <RedirectLanding linkData={sharedLinkData} />
       </>
