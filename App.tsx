@@ -124,7 +124,7 @@ const App: React.FC = () => {
           <div className="bg-gradient-to-tr from-[#1DB954] to-blue-500 p-2 rounded-xl shadow-lg shadow-green-900/20">
             <Zap className="text-white w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Deep Linker</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Deep Linker Pro v3.0</h1>
         </div>
         <div className="text-xs text-gray-400 border border-gray-700 px-2 py-1 rounded-full">
           Admin
