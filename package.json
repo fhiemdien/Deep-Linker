@@ -12,8 +12,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "lucide-react": "^0.344.0",
-    "@google/genai": "latest,
-        "@supabase/supabase-js": "latest",
+        "@google/genai": "latest",
+        "@supabase/supabase-js": "latest"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
