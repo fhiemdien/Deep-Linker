@@ -37,13 +37,13 @@ export default async function handler(
       console.error('Supabase insert error:', error);
       return response
         .status(500)
-        .json({ error: error.message }, { status: 500 });
+        .json({ error: error.message });
     }
 
-    return response.status(200).json({ success: true }, { status: 200 });
+    return response.status(200).json({ success: true });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Track click error:', errorMessage);
-    return response.status(500).json({ error: errorMessage }, { status: 500 });
+    return response.status(500).json({ error: errorMessage });
   }
 }
