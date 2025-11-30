@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -6,18 +6,25 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function POST(request: NextRequest) {
+export default async function handler(
+  request: VercelRequest,
+  response: VercelResponse
+) {
+  if (request.method !== 'POST') {
+    return response.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const data = await request.json();
-    
-    // Get country from IP geolocation
-    const country = request.headers.get('cf-ipcountry') || 'Unknown';
-    const userAgent = request.headers.get('user-agent') || 'Unknown';
-    
+    const data = await request.body;
+
+    // Get country from Vercel's cf-ipcountry header
+    const country = request.headers['cf-ipcountry'] || 'Unknown';
+    const userAgent = request.headers['user-agent'] || 'Unknown';
+
     // Insert into Supabase
     const { error } = await supabase.from('click_tracking').insert([
       {
-        link_type: data.linkType, // 'spotify', 'apple_music', 'youtube'
+        link_type: data.linkType,
         country,
         user_agent: userAgent,
         platform: data.platform,
@@ -28,15 +35,15 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Supabase insert error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return response
+        .status(500)
+        .json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
-  } catch (err) {
-    console.error('API error:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return response.status(200).json({ success: true }, { status: 200 });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Track click error:', errorMessage);
+    return response.status(500).json({ error: errorMessage }, { status: 500 });
   }
 }
