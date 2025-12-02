@@ -1,3 +1,4 @@
+// Force rebuild with corrected API key
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
